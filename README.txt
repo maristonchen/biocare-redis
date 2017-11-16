@@ -4,23 +4,27 @@ biocare-redis 是springMVC+netty 框架结合原型项目
 2.波形数据格式如下
 
 {
-	"Protocol":{  //协议
-		"Version":"1.0",         // 协议版本号  类型：  String
-		"Manufactor":"Biocare"   // 厂家        类型： string
+  	"protocol": { // 协议
+		"version": "1.0",  // 版本，String
+		"maufactor": "biocare"  // 厂家，String
 	},
-	"MedicalRecordInfo":{  // 病历信息
-		"MedicalRecordNumber":"szjc0001",   // 病历号  类型： String
-		"DeviceId":"BJ654321"   			// 设备ID  类型： String  描述： 那个设备上传的信息
+	"caseInfo": { // 病历信息
+		"caseId": "szjc0001",  // 病历ID，String
+		"deviceId": "bj-ecare-082" // 设备ID，String
 	},
-	"WaveInfo":{  // 波形信息
-		"SampleRate":256,  // 采样率  类型： int
-		"LeadEvent":3,     // 导联数  类型： int
-		"Channel":""       // 通道    类型： int   说明：心电宝协议中的字段，作用暂时不知，保留字段
+	"waveInfo": { // 波形信息
+		"sampleRate": 256,  // 采样率，int
+		"leadEvent": 1,  // 导联事件，int，说明：心电宝协议中的字段，作用暂时不知，保留字段
+		"channel": 3 // 通道数（导联数目）, int
 	},
-	"WaveData":,   // 波形数据 类型：  byte[]
-	"TimeInfo":{
-		"MonitoredTime":1,  	  // 修改时间  类型： int   说明：心电宝协议中的字段，作用暂时不知，保留字段
-		"TimeStamp":164417465455  // 时间戳    类型： long  说明: 心电宝数据上传的时间
+	"waveData": "", // 波形数据，byte[]
+	"timeInfo": { // 时间信息
+		"monitoredTime": 1, // 监测时间，int，说明：心电宝协议中的字段，作用暂时不知，保留字段
+		"timestamp": 16441746455 // 时间戳, long，说明：数据上传时间
+	},
+	"waveFlag": 1, // 波形数据标识，enum，0 – 开始传输；1 – 传输中；2 – 中断传输 ,3 - 结束传输
+	"gps": {
+		"longitude": 114.21892734521, // 经度，long
+		"latitude": 29.575429778924 // 纬度，long
 	}
-	"WaveFlag": 1    // 波形采集的标志位   类型： int   0-开始采集   1-采集中   2-结束采集       ---  新增字段(2017-10-11 10:34)
 }
