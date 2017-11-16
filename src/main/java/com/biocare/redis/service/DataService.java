@@ -1,5 +1,7 @@
 package com.biocare.redis.service;
 
+import java.util.List;
+
 /**
  * service data handle
  *
@@ -13,33 +15,39 @@ public interface DataService {
      * save key and value
      *
      * @param waveMetaData the wave meta data
-     * @return the result ,success or fail
      */
-    String save(String waveMetaData);
+    void save(String waveMetaData);
 
     /**
      * query the value by the key
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseId case id
      * @param minTime             the min time
      * @param maxTime             the max time
      * @return the list of value
      */
-    String queryByTimeRange(String medicalRecordNumber, String minTime, String maxTime);
+    List<Object> queryByTimeRange(String caseId, String minTime, String maxTime);
 
     /**
      * query the first wave data
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseIds case id
      * @return the data
      */
-    String queryFirst(String medicalRecordNumber);
+    List<Object> queryFirst(String[] caseIds);
 
     /**
      * query the last wave data
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseIds  case id
      * @return the data
      */
-    String queryLast(String medicalRecordNumber);
+    List<Object> queryLast(String[] caseIds);
+
+    /**
+     * query gps info
+     * @param caseId case id
+     * @return the  gps data
+     */
+    Object getPatientGPS(String caseId);
 }

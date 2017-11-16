@@ -1,6 +1,5 @@
 package com.biocare.redis.service.impl;
 
-import com.alibaba.fastjson.JSON;
 import com.biocare.redis.service.DataService;
 import com.biocare.redis.util.RedisClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,47 +34,55 @@ public class DataServiceImpl implements DataService {
      * save key and value
      *
      * @param waveMetaData the wave meta data
-     * @return the result ,success or fail
      */
     @Override
-    public String save(String waveMetaData) {
-        redisClient.waveIncr(waveMetaData,operIndex);
-        return "success";
+    public void save(String waveMetaData) {
+        redisClient.waveIncr(waveMetaData, operIndex);
     }
 
     /**
      * query the value by the key
      *
-     * @param medicalRecordNumber the medical record no
-     * @param minTime             the min time
-     * @param maxTime             the max time
+     * @param caseId  case id
+     * @param minTime the min time
+     * @param maxTime the max time
      * @return the list of value
      */
     @Override
-    public String queryByTimeRange(String medicalRecordNumber, String minTime, String maxTime) {
-        List<String> datas = redisClient.queryByRange(medicalRecordNumber, minTime, maxTime, operIndex);
-        return JSON.toJSONString(datas);
+    public List<Object> queryByTimeRange(String caseId, String minTime, String maxTime) {
+        return redisClient.queryByRange(caseId, minTime, maxTime, operIndex);
     }
 
     /**
      * query the first wave data
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseIds case id
      * @return the data
      */
     @Override
-    public String queryFirst(String medicalRecordNumber) {
-        return redisClient.queryFirstOrLast(medicalRecordNumber,true,operIndex);
+    public List<Object> queryFirst(String[] caseIds) {
+        return redisClient.queryFirstOrLast(caseIds, true, operIndex);
     }
 
     /**
      * query the last wave data
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseIds case id
      * @return the data
      */
     @Override
-    public String queryLast(String medicalRecordNumber) {
-        return redisClient.queryFirstOrLast(medicalRecordNumber,false,operIndex);
+    public List<Object> queryLast(String[] caseIds) {
+        return redisClient.queryFirstOrLast(caseIds, false, operIndex);
+    }
+
+    /**
+     * query gps info
+     *
+     * @param caseId case id
+     * @return the  gps data
+     */
+    @Override
+    public Object getPatientGPS(String caseId) {
+        return redisClient.getPatientGPS(caseId, operIndex);
     }
 }

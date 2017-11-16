@@ -1,15 +1,18 @@
 package com.biocare.redis.util;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.lambdaworks.redis.RedisAsyncConnection;
 import com.lambdaworks.redis.RedisFuture;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.data.redis.connection.lettuce.DefaultLettucePool;
 import org.springframework.util.Assert;
+import org.xerial.snappy.Snappy;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -60,6 +63,11 @@ public final class RedisClient implements InitializingBean, DisposableBean {
     private static String END_TIME_KEY_TAIL = "_end_time_key";
 
     /**
+     * GPS key tail
+     */
+    private static String GPS_KEY_TAIL = "_gps_key";
+
+    /**
      * save wave info by second
      *
      * @param waveMetaData wave meta data
@@ -72,19 +80,21 @@ public final class RedisClient implements InitializingBean, DisposableBean {
             //每一秒的数据
             JSONObject json = JSONObject.parseObject(waveMetaData);
 
-            //时间信息
-            JSONObject timeInfo = json.getJSONObject("TimeInfo");
+            JSONObject waveObj = json.getJSONObject("waveObj");
 
-            String timestamp = timeInfo.getString("TimeStamp");
+            //时间信息
+            JSONObject timeInfo = waveObj.getJSONObject("timeInfo");
+
+            String timestamp = timeInfo.getString("timestamp");
 
             //波形采集的标志位
-            int waveFlag = json.getIntValue("WaveFlag");
-
-            //病历信息
-            JSONObject medicalRecordInfo = json.getJSONObject("MedicalRecordInfo");
+            int waveFlag = waveObj.getIntValue("waveFlag");
 
             //病历号
-            String medicalRecordNumber = medicalRecordInfo.getString("MedicalRecordNumber");
+            String caseId = json.getString("caseId");
+
+            //GPS data
+            JSONObject gps = waveObj.getJSONObject("gps");
 
             //get redis connection
             connection = getConn(index);
@@ -93,10 +103,14 @@ public final class RedisClient implements InitializingBean, DisposableBean {
             double score = 0;
 
             //开始波形时间key
-            String startTimeKey = medicalRecordNumber + START_TIME_KEY_TAIL;
+            String startTimeKey = caseId + START_TIME_KEY_TAIL;
             //最后波形时间key
-            String endTimeKey = medicalRecordNumber + END_TIME_KEY_TAIL;
+            String endTimeKey = caseId + END_TIME_KEY_TAIL;
+            //gps key
+            String gpsKey = caseId + GPS_KEY_TAIL;
+
             boolean changeEndTime = true;
+
             if (waveFlag == 0) {
                 connection.set(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)), timestamp.getBytes(Charset.forName(DEFAULT_CHARSET)));
             } else {
@@ -106,17 +120,23 @@ public final class RedisClient implements InitializingBean, DisposableBean {
 
                 RedisFuture<byte[]> endTimeBytes = connection.get(endTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
                 String endTime = new String(endTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
+                // 如果存储顺序有问题，不更新最后时间
                 if (BigDecimalUtil.compareTo(timestamp, endTime) < 0) {
                     changeEndTime = false;
                 }
             }
 
-            connection.zadd(medicalRecordNumber.getBytes(Charset.forName(DEFAULT_CHARSET)), score, waveMetaData.getBytes(Charset.forName(DEFAULT_CHARSET)));
+            //压缩数据
+            byte[] metaData = Snappy.compress(waveMetaData.getBytes(Charset.forName(DEFAULT_CHARSET)));
+
+            connection.zadd(caseId.getBytes(Charset.forName(DEFAULT_CHARSET)), score, metaData);
 
             if (changeEndTime) {
                 connection.set(endTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)), timestamp.getBytes(Charset.forName(DEFAULT_CHARSET)));
             }
 
+            //更新GPS数据
+            connection.set(gpsKey.getBytes(Charset.forName(DEFAULT_CHARSET)), gps.toJSONString().getBytes(Charset.forName(DEFAULT_CHARSET)));
 
         } catch (Exception e) {
             logger.error("====save wave info by second, occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());
@@ -130,13 +150,13 @@ public final class RedisClient implements InitializingBean, DisposableBean {
     /**
      * Return a range of members in a sorted set, by score.
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseId the medical record no
      * @param minTime             min time
      * @param maxTime             max time
      * @return list
      */
-    public List<String> queryByRange(String medicalRecordNumber, String minTime, String maxTime, int index) {
-        Assert.hasText(medicalRecordNumber, "medicalRecordNumber is empty");
+    public List<Object> queryByRange(String caseId, String minTime, String maxTime, int index) {
+        Assert.hasText(caseId, "medicalRecordNumber is empty");
         Assert.hasText(minTime, "minTime is empty");
         Assert.hasText(maxTime, "maxTime is empty");
         Assert.isTrue(index >= 0 && index < databases, "the index of database range must be between 0 and " + databases);
@@ -144,7 +164,7 @@ public final class RedisClient implements InitializingBean, DisposableBean {
         try {
             connection = getConn(index);
             //开始波形时间key
-            String startTimeKey = medicalRecordNumber + START_TIME_KEY_TAIL;
+            String startTimeKey = caseId + START_TIME_KEY_TAIL;
             RedisFuture<byte[]> startTimeBytes = connection.get(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
             String startTime = new String(startTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
             //min score
@@ -154,12 +174,14 @@ public final class RedisClient implements InitializingBean, DisposableBean {
             double max = BigDecimalUtil.sub(maxTime, startTime);
 
             //operation
-            RedisFuture<List<byte[]>> bytes = connection.zrangebyscore(medicalRecordNumber.getBytes(Charset.forName(DEFAULT_CHARSET)), min, max);
-            List<String> values = new ArrayList<>();
+            RedisFuture<List<byte[]>> bytes = connection.zrangebyscore(caseId.getBytes(Charset.forName(DEFAULT_CHARSET)), min, max);
+            List<Object> values = new ArrayList<>();
             if (CollectionUtils.isNotEmpty(bytes.get())) {
                 for (byte[] data : bytes.get()) {
-                    String value = new String(data, Charset.forName(DEFAULT_CHARSET));
-                    values.add(value);
+                    //解压
+                    byte[] unzipData = Snappy.uncompress(data);
+                    String value = new String(unzipData, Charset.forName(DEFAULT_CHARSET));
+                    values.add(JSON.parseObject(value).getJSONObject("waveObj"));
                 }
             }
             return values;
@@ -176,38 +198,47 @@ public final class RedisClient implements InitializingBean, DisposableBean {
     /**
      * Return a range of members in a sorted set, by score.
      *
-     * @param medicalRecordNumber the medical record no
+     * @param caseIds the medical record no
      * @param firstOrLast         first->true  last ->false
      * @return list
      */
-    public String queryFirstOrLast(String medicalRecordNumber, boolean firstOrLast, int index) {
-        Assert.hasText(medicalRecordNumber, "medicalRecordNumber is empty");
+    public List<Object> queryFirstOrLast(String[] caseIds, boolean firstOrLast, int index) {
+        Assert.isTrue(ArrayUtils.isNotEmpty(caseIds), "caseIds is empty");
         Assert.isTrue(index >= 0 && index < databases, "the index of database range must be between 0 and " + databases);
         RedisAsyncConnection<byte[], byte[]> connection = null;
+        List<Object> list = new ArrayList<>();
         try {
             connection = getConn(index);
 
-            //score
-            double score = 0;
+            for (String caseId : caseIds) {
+                //score
+                double score = 0;
 
-            //first or last
-            if (!firstOrLast) {
-                //开始波形时间key
-                String startTimeKey = medicalRecordNumber + START_TIME_KEY_TAIL;
-                RedisFuture<byte[]> startTimeBytes = connection.get(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
-                String startTime = new String(startTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
+                //first or last
+                if (!firstOrLast) {
+                    //开始波形时间key
+                    String startTimeKey = caseId + START_TIME_KEY_TAIL;
+                    RedisFuture<byte[]> startTimeBytes = connection.get(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
+                    String startTime = new String(startTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
 
-                //最后波形时间key
-                String endTimeKey = medicalRecordNumber + END_TIME_KEY_TAIL;
-                RedisFuture<byte[]> endTimeBytes = connection.get(endTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
-                String endTime = new String(endTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
+                    //最后波形时间key
+                    String endTimeKey = caseId + END_TIME_KEY_TAIL;
+                    RedisFuture<byte[]> endTimeBytes = connection.get(endTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
+                    String endTime = new String(endTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
 
-                score = BigDecimalUtil.sub(endTime, startTime);
+                    score = BigDecimalUtil.sub(endTime, startTime);
+                }
+
+                //operation
+                RedisFuture<List<byte[]>> bytes = connection.zrangebyscore(caseId.getBytes(Charset.forName(DEFAULT_CHARSET)), score, score);
+                if (CollectionUtils.isNotEmpty(bytes.get())) {
+                    //解压
+                    byte[] unzipData = Snappy.uncompress(bytes.get().get(0));
+                    String value = new String(unzipData, Charset.forName(DEFAULT_CHARSET));
+                    list.add(JSON.parseObject(value));
+                }
             }
 
-            //operation
-            RedisFuture<List<byte[]>> bytes = connection.zrangebyscore(medicalRecordNumber.getBytes(Charset.forName(DEFAULT_CHARSET)), score, score);
-            return CollectionUtils.isNotEmpty(bytes.get()) ? new String(bytes.get().get(0), Charset.forName(DEFAULT_CHARSET)) : null;
         } catch (Exception e) {
             logger.error("===query a range of members  by score,occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());
         } finally {
@@ -215,9 +246,38 @@ public final class RedisClient implements InitializingBean, DisposableBean {
                 defaultLettucePool.returnResource(connection);
             }
         }
-        return null;
+        return list;
     }
 
+    /**
+     * get patient gps info
+     *
+     * @param caseId case id
+     * @param index  database index
+     * @return info
+     */
+    public Object getPatientGPS(String caseId, int index) {
+        Assert.hasText(caseId, "caseId is empty");
+        Assert.isTrue(index >= 0 && index < databases, "the index of database range must be between 0 and " + databases);
+        RedisAsyncConnection<byte[], byte[]> connection = null;
+        try {
+            connection = getConn(index);
+
+            //gps key
+            String gpsKey = caseId + GPS_KEY_TAIL;
+
+            RedisFuture<byte[]> gpsBytes = connection.get(gpsKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
+            String value =  new String(gpsBytes.get(), Charset.forName(DEFAULT_CHARSET));
+            return JSON.parseObject(value);
+        } catch (Exception e) {
+            logger.error("===get patient gps info,occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());
+        } finally {
+            if (connection != null) {
+                defaultLettucePool.returnResource(connection);
+            }
+        }
+        return null;
+    }
 
     /**
      * 删除键值对
