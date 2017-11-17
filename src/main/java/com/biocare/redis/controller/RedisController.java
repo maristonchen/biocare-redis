@@ -68,7 +68,7 @@ public class RedisController {
      */
     @RequestMapping(value = "/getRangeWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public Object getRangeWaveData(String jsonData) {
+    public String getRangeWaveData(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
             //{"caseId":"BJ654321","minTimestamp":1507770366560,"maxTimestamp":1507770379560}
@@ -82,7 +82,7 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return map;
+        return JSON.toJSONString(map);
     }
 
     /**
@@ -93,7 +93,7 @@ public class RedisController {
      */
     @RequestMapping(value = "/getFirstWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public Object getFirstWaveData(String jsonData) {
+    public String getFirstWaveData(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         //{"caseIds":["BJ654321","BJ654322"]}
         try {
@@ -107,7 +107,7 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return map;
+        return JSON.toJSONString(map);
     }
 
     /**
@@ -118,7 +118,7 @@ public class RedisController {
      */
     @RequestMapping(value = "/getLatestWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public Object getLatestWaveData(String jsonData) {
+    public String getLatestWaveData(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
             JSONArray array = JSON.parseObject(jsonData).getJSONArray("caseIds");
@@ -131,7 +131,7 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return map;
+        return JSON.toJSONString(map);
     }
 
 
@@ -143,7 +143,7 @@ public class RedisController {
      */
     @RequestMapping(value = "/getPatientGPS", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public Object getPatientGPS(String jsonData) {
+    public String getPatientGPS(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
             //{"caseId":"BJ654321"}
@@ -157,7 +157,7 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return map;
+        return JSON.toJSONString(map);
     }
 
 }
