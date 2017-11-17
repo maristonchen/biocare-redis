@@ -22,7 +22,7 @@ import java.util.Map;
  * @since 2017/07/27
  */
 @Controller
-@RequestMapping("/redis")
+@RequestMapping("/")
 public class RedisController {
 
     /**

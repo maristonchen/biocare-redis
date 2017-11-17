@@ -140,6 +140,7 @@ public final class RedisClient implements InitializingBean, DisposableBean {
 
         } catch (Exception e) {
             logger.error("====save wave info by second, occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         } finally {
             if (connection != null) {
                 defaultLettucePool.returnResource(connection);
@@ -156,7 +157,7 @@ public final class RedisClient implements InitializingBean, DisposableBean {
      * @return list
      */
     public List<Object> queryByRange(String caseId, String minTime, String maxTime, int index) {
-        Assert.hasText(caseId, "medicalRecordNumber is empty");
+        Assert.hasText(caseId, "caseId is empty");
         Assert.hasText(minTime, "minTime is empty");
         Assert.hasText(maxTime, "maxTime is empty");
         Assert.isTrue(index >= 0 && index < databases, "the index of database range must be between 0 and " + databases);
