@@ -203,8 +203,8 @@ public final class RedisClient implements InitializingBean, DisposableBean {
      * @param firstOrLast         first->true  last ->false
      * @return list
      */
-    public List<Object> queryFirstOrLast(String[] caseIds, boolean firstOrLast, int index) {
-        Assert.isTrue(ArrayUtils.isNotEmpty(caseIds), "caseIds is empty");
+    public List<Object> queryFirstOrLast(List<String> caseIds, boolean firstOrLast, int index) {
+        Assert.notEmpty(caseIds, "caseIds is empty");
         Assert.isTrue(index >= 0 && index < databases, "the index of database range must be between 0 and " + databases);
         RedisAsyncConnection<byte[], byte[]> connection = null;
         List<Object> list = new ArrayList<>();

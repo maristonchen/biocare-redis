@@ -34,7 +34,7 @@ public interface DataService {
      * @param caseIds case id
      * @return the data
      */
-    List<Object> queryFirst(String[] caseIds);
+    List<Object> queryFirst(List<String> caseIds);
 
     /**
      * query the last wave data
@@ -42,7 +42,7 @@ public interface DataService {
      * @param caseIds  case id
      * @return the data
      */
-    List<Object> queryLast(String[] caseIds);
+    List<Object> queryLast(List<String> caseIds);
 
     /**
      * query gps info

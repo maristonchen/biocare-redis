@@ -60,7 +60,7 @@ public class DataServiceImpl implements DataService {
      * @return the data
      */
     @Override
-    public List<Object> queryFirst(String[] caseIds) {
+    public List<Object> queryFirst(List<String> caseIds) {
         return redisClient.queryFirstOrLast(caseIds, true, operIndex);
     }
 
@@ -71,7 +71,7 @@ public class DataServiceImpl implements DataService {
      * @return the data
      */
     @Override
-    public List<Object> queryLast(String[] caseIds) {
+    public List<Object> queryLast(List<String> caseIds) {
         return redisClient.queryFirstOrLast(caseIds, false, operIndex);
     }
 

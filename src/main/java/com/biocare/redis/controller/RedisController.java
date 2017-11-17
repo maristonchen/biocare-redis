@@ -1,6 +1,8 @@
 package com.biocare.redis.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.biocare.redis.service.DataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,15 +41,15 @@ public class RedisController {
     /**
      * 保存波形
      *
-     * @param waveMetaData 每秒的波形数据 json格式的字符串
+     * @param jsonData 每秒的波形数据 json格式的字符串
      * @return string "success" 表示成功 "fail"表示失败
      */
     @RequestMapping(value = "/saveWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public String save(String waveMetaData) {
+    public String save(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
-            dataService.save(waveMetaData);
+            dataService.save(jsonData);
             map.put("code", 0);
             map.put("msg", "ok");
         } catch (Exception e) {
@@ -61,17 +63,17 @@ public class RedisController {
     /**
      * 波形范围查询
      *
-     * @param caseId       病历号
-     * @param minTimestamp 最小时间戳
-     * @param maxTimestamp 最大时间戳
+     * @param jsonData json
      * @return string json 格式的字符串
      */
     @RequestMapping(value = "/getRangeWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public String getRangeWaveData(String caseId, String minTimestamp, String maxTimestamp) {
+    public Object getRangeWaveData(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
-            List<Object> datas = dataService.queryByTimeRange(caseId, minTimestamp, maxTimestamp);
+            //{"caseId":"BJ654321","minTimestamp":1507770366560,"maxTimestamp":1507770379560}
+            JSONObject jsonObject = JSON.parseObject(jsonData);
+            List<Object> datas = dataService.queryByTimeRange(jsonObject.getString("caseId"), jsonObject.getString("minTimestamp"), jsonObject.getString("maxTimestamp"));
             map.put("code", 0);
             map.put("msg", "ok");
             map.put("waveObjs", datas);
@@ -80,21 +82,23 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return JSON.toJSONString(map);
+        return map;
     }
 
     /**
      * 查询第一秒波形
      *
-     * @param caseIds 病历号
+     * @param jsonData 病历号
      * @return string json 格式的字符串
      */
     @RequestMapping(value = "/getFirstWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public String getFirstWaveData(String[] caseIds) {
+    public Object getFirstWaveData(String jsonData) {
         Map<String, Object> map = new HashMap<>();
+        //{"caseIds":["BJ654321","BJ654322"]}
         try {
-            List<Object> objects = dataService.queryFirst(caseIds);
+            JSONArray array = JSON.parseObject(jsonData).getJSONArray("caseIds");
+            List<Object> objects = dataService.queryFirst(array.toJavaList(String.class));
             map.put("code", 0);
             map.put("msg", "ok");
             map.put("waveObj", objects);
@@ -103,22 +107,22 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return JSON.toJSONString(map);
+        return map;
     }
 
     /**
      * 查询最后一秒的波形
      *
-     * @param caseIds 病历号
+     * @param jsonData 病历号
      * @return string json 格式的字符串
      */
     @RequestMapping(value = "/getLatestWaveData", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public String getLatestWaveData(String[] caseIds) {
-
+    public Object getLatestWaveData(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
-            List<Object> objects = dataService.queryLast(caseIds);
+            JSONArray array = JSON.parseObject(jsonData).getJSONArray("caseIds");
+            List<Object> objects = dataService.queryLast(array.toJavaList(String.class));
             map.put("code", 0);
             map.put("msg", "ok");
             map.put("waveObj", objects);
@@ -127,22 +131,24 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return JSON.toJSONString(map);
+        return map;
     }
 
 
     /**
      * 查询GPS信息
      *
-     * @param caseId 病历号
+     * @param jsonData 病历号
      * @return string json 格式的字符串
      */
     @RequestMapping(value = "/getPatientGPS", method = RequestMethod.POST, produces = {"text/html;charset=utf-8"})
     @ResponseBody
-    public String getPatientGPS(String caseId) {
+    public Object getPatientGPS(String jsonData) {
         Map<String, Object> map = new HashMap<>();
         try {
-            Object gps = dataService.getPatientGPS(caseId);
+            //{"caseId":"BJ654321"}
+            JSONObject jsonObject = JSON.parseObject(jsonData);
+            Object gps = dataService.getPatientGPS(jsonObject.getString("caseId"));
             map.put("code", 0);
             map.put("msg", "ok");
             map.put("gps", gps);
@@ -151,7 +157,7 @@ public class RedisController {
             map.put("code", 999);
             map.put("msg", e.getMessage());
         }
-        return JSON.toJSONString(map);
+        return map;
     }
 
 }
