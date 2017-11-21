@@ -5,7 +5,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.lambdaworks.redis.RedisAsyncConnection;
 import com.lambdaworks.redis.RedisFuture;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -151,9 +150,9 @@ public final class RedisClient implements InitializingBean, DisposableBean {
     /**
      * Return a range of members in a sorted set, by score.
      *
-     * @param caseId the medical record no
-     * @param minTime             min time
-     * @param maxTime             max time
+     * @param caseId  the medical record no
+     * @param minTime min time
+     * @param maxTime max time
      * @return list
      */
     public List<Object> queryByRange(String caseId, String minTime, String maxTime, int index) {
@@ -167,6 +166,9 @@ public final class RedisClient implements InitializingBean, DisposableBean {
             //开始波形时间key
             String startTimeKey = caseId + START_TIME_KEY_TAIL;
             RedisFuture<byte[]> startTimeBytes = connection.get(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
+            if (startTimeBytes.get() == null) {
+                return null;
+            }
             String startTime = new String(startTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
             //min score
             double min = BigDecimalUtil.sub(minTime, startTime);
@@ -188,27 +190,27 @@ public final class RedisClient implements InitializingBean, DisposableBean {
             return values;
         } catch (Exception e) {
             logger.error("===query a range of members  by score,occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         } finally {
             if (connection != null) {
                 defaultLettucePool.returnResource(connection);
             }
         }
-        return null;
     }
 
     /**
      * Return a range of members in a sorted set, by score.
      *
-     * @param caseIds the medical record no
-     * @param firstOrLast         first->true  last ->false
+     * @param caseIds     the medical record no
+     * @param firstOrLast first->true  last ->false
      * @return list
      */
     public List<Object> queryFirstOrLast(List<String> caseIds, boolean firstOrLast, int index) {
         Assert.notEmpty(caseIds, "caseIds is empty");
         Assert.isTrue(index >= 0 && index < databases, "the index of database range must be between 0 and " + databases);
         RedisAsyncConnection<byte[], byte[]> connection = null;
-        List<Object> list = new ArrayList<>();
         try {
+            List<Object> list = new ArrayList<>();
             connection = getConn(index);
 
             for (String caseId : caseIds) {
@@ -220,6 +222,9 @@ public final class RedisClient implements InitializingBean, DisposableBean {
                     //开始波形时间key
                     String startTimeKey = caseId + START_TIME_KEY_TAIL;
                     RedisFuture<byte[]> startTimeBytes = connection.get(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
+                    if (startTimeBytes.get() == null) {
+                        continue;
+                    }
                     String startTime = new String(startTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
 
                     //最后波形时间key
@@ -239,15 +244,16 @@ public final class RedisClient implements InitializingBean, DisposableBean {
                     list.add(JSON.parseObject(value));
                 }
             }
-
+            return list;
         } catch (Exception e) {
             logger.error("===query a range of members  by score,occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         } finally {
             if (connection != null) {
                 defaultLettucePool.returnResource(connection);
             }
         }
-        return list;
+
     }
 
     /**
@@ -268,7 +274,10 @@ public final class RedisClient implements InitializingBean, DisposableBean {
             String gpsKey = caseId + GPS_KEY_TAIL;
 
             RedisFuture<byte[]> gpsBytes = connection.get(gpsKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
-            String value =  new String(gpsBytes.get(), Charset.forName(DEFAULT_CHARSET));
+            if (gpsBytes.get() == null) {
+                return null;
+            }
+            String value = new String(gpsBytes.get(), Charset.forName(DEFAULT_CHARSET));
             return JSON.parseObject(value);
         } catch (Exception e) {
             logger.error("===get patient gps info,occur an error that is [{}]:{}", e.getStackTrace()[0], e.getMessage());

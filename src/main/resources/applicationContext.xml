@@ -11,8 +11,8 @@
     <!-- 自动扫描包 ,将带有注解的类 纳入spring容器管理 -->
     <context:component-scan base-package="com.biocare.redis.*"/>
 
-    <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"/>
-    <!-- 支持返回json(避免IE在ajax请求时，返回json出现下载 ) -->
+  <!--  <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"/>
+    &lt;!&ndash; 支持返回json(避免IE在ajax请求时，返回json出现下载 ) &ndash;&gt;
     <bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
         <property name="messageConverters">
             <list>
@@ -33,7 +33,7 @@
                 <property name="serializationInclusion" value="NON_NULL"/>
             </bean>
         </property>
-    </bean>
+    </bean>-->
     <!-- 支持返回json -->
 
     <import resource="spring-redis.xml"/>
