@@ -110,12 +110,15 @@ public final class RedisClient implements InitializingBean, DisposableBean {
 
             boolean changeEndTime = true;
 
+            logger.info("save caseId:[{}] waveFlag:[{}] timestamp:[{}]",caseId,waveFlag,timestamp);
+
             if (waveFlag == 0) {
                 connection.set(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)), timestamp.getBytes(Charset.forName(DEFAULT_CHARSET)));
             } else {
                 RedisFuture<byte[]> startTimeBytes = connection.get(startTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
                 String startTime = new String(startTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));
                 score = BigDecimalUtil.sub(timestamp, startTime);
+                logger.info("calc score timestamp:[{}]-startTime:[{}]=score:[{}]",timestamp,startTime,score);
 
                 RedisFuture<byte[]> endTimeBytes = connection.get(endTimeKey.getBytes(Charset.forName(DEFAULT_CHARSET)));
                 String endTime = new String(endTimeBytes.get(), Charset.forName(DEFAULT_CHARSET));

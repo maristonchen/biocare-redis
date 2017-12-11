@@ -35,6 +35,9 @@
        <!-- 日志输出级别 -->
        <root level="INFO">
               <appender-ref ref="STDOUT" />
-              <appender-ref ref="FILE" />
        </root>
+       <logger name="com.biocare" level="INFO">
+              <appender-ref ref="FILE"/>
+       </logger>
+
 </configuration>
